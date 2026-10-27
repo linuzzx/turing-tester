@@ -1,0 +1,307 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Turing-Werkbank</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<style>
+/* Layout: Band oben, darunter Zustand + Aktionsknöpfe, darunter das mitgeschriebene Protokoll */
+:root{
+  --bg:#edf0f4; --surface:#ffffff; --ink:#17202c; --muted:#5b6677; --line:#d2d8e1;
+  --accent:#2445c4; --accent-soft:#e3e8fb; --head:#d9820f; --head-soft:#fdf0db;
+  --err:#b3302a; --err-soft:#fbe5e3; --cell:#f7f8fa;
+  --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --surface:#1a2029; --ink:#e4e8ef; --muted:#97a1b1; --line:#2e3644;
+  --accent:#8aa2ff; --accent-soft:#232c4a; --head:#f0a640; --head-soft:#3a2c17;
+  --err:#ff8a80; --err-soft:#3b1d1b; --cell:#151a22; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --surface:#1a2029; --ink:#e4e8ef; --muted:#97a1b1; --line:#2e3644;
+  --accent:#8aa2ff; --accent-soft:#232c4a; --head:#f0a640; --head-soft:#3a2c17;
+  --err:#ff8a80; --err-soft:#3b1d1b; --cell:#151a22; color-scheme:dark}
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+h1{font-size:1.6rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
+header p{margin:2px 0 0;color:var(--muted);max-width:70ch}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:grid;gap:4px;font-size:.8rem;color:var(--muted);font-weight:500}
+input[type=text],select{font:inherit;color:var(--ink);background:var(--cell);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+input[type=text]{font-family:var(--f-mono)}
+input:focus-visible,select:focus-visible,button:focus-visible,.cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;font-weight:600;font-size:.92rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:8px 14px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button:disabled{opacity:.45;cursor:default}
+kbd{font-family:var(--f-mono);font-size:.75rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--cell)}
+.hint{font-size:.82rem;color:var(--muted);margin:10px 0 0}
+
+/* Band */
+.tapebox{overflow-x:auto;padding:26px 4px 6px;margin:14px 0 4px}
+.tape{display:flex;width:max-content;margin:0 auto}
+.cellwrap{display:grid;justify-items:center;gap:3px;position:relative}
+.cell{width:44px;height:48px;display:grid;place-items:center;font-family:var(--f-mono);font-size:1.35rem;font-weight:700;background:var(--cell);border:1px solid var(--line);margin-left:-1px;cursor:pointer;user-select:none;color:var(--ink)}
+.cell.blank{color:var(--muted);font-weight:400;opacity:.55}
+.cell.head{background:var(--head-soft);border-color:var(--head);box-shadow:inset 0 0 0 1px var(--head);z-index:1;opacity:1}
+.cellwrap.head::before{content:"▼";position:absolute;top:-22px;color:var(--head);font-size:.9rem}
+.idx{font-family:var(--f-mono);font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.readout{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem}
+.readout b{color:var(--ink);font-family:var(--f-mono)}
+
+/* Steuerung */
+.machine{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:18px}
+@media (max-width:760px){.machine{grid-template-columns:minmax(0,1fr)}}
+.now{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.statebig{font-family:var(--f-mono);font-size:2rem;font-weight:700;color:var(--accent)}
+.reads{font-family:var(--f-mono);font-size:1.1rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-family:var(--f-mono);font-size:.85rem;padding:4px 10px;border-radius:999px;background:var(--cell)}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.actions button{padding:14px 10px;font-size:1rem}
+.actions .mv{font-family:var(--f-mono)}
+.actions .wr{font-family:var(--f-mono);background:var(--cell)}
+.sub{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+/* Protokoll */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.cols{grid-template-columns:minmax(0,1fr)}}
+.tablebox{overflow:auto;max-height:340px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:5px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--surface)}
+td{font-family:var(--f-mono)}
+tr.conflict td{background:var(--err-soft)}
+tr.conflict td:first-child{box-shadow:inset 3px 0 0 var(--err)}
+.empty td{font-family:var(--f-body);color:var(--muted)}
+.log{font-family:var(--f-mono);font-size:.82rem;max-height:340px;overflow:auto;margin:0;padding:0;list-style:none;font-variant-numeric:tabular-nums}
+.log li{padding:3px 0;border-bottom:1px dashed var(--line)}
+.log li:first-child{color:var(--accent);font-weight:600}
+.warn{font-size:.85rem;background:var(--err-soft);border-left:3px solid var(--err);padding:6px 9px;border-radius:0 4px 4px 0;margin-top:10px}
+@media (prefers-reduced-motion:no-preference){.cell{transition:background .12s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Turing-Werkbank</h1>
+    <p>Du bist die Maschine. Lies das Feld unter dem Kopf, entscheide dich für <b>eine</b> Reaktion und für den Zustand danach. Deine Schritte werden als Übergangstabelle mitgeschrieben.</p>
+  </header>
+
+  <section class="panel" aria-label="Band">
+    <div class="row">
+      <label style="flex:1 1 200px">Eingabe (␣ als <code>_</code> oder Leerzeichen)
+        <input type="text" id="input" value="IOI" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Kopf startet
+        <select id="mode">
+          <option value="left">links neben der Eingabe (Aufg. 1)</option>
+          <option value="first">auf dem ersten Zeichen (Aufg. 2)</option>
+        </select>
+      </label>
+      <label>Alphabet
+        <input type="text" id="alpha" value="O I" size="6" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Startzustand
+        <input type="text" id="start" value="z0" size="6" autocomplete="off" spellcheck="false">
+      </label>
+      <button class="primary" id="load">Band laden</button>
+    </div>
+
+    <div class="tapebox" id="tapebox"><div class="tape" id="tape"></div></div>
+    <div class="readout" id="readout"></div>
+  </section>
+
+  <section class="panel machine" aria-label="Steuerung">
+    <div>
+      <h2>Zustand</h2>
+      <div class="now"><span class="statebig" id="state">z0</span><span class="reads">liest <b id="reads">␣</b></span></div>
+      <div class="row" style="margin-top:12px">
+        <label style="flex:1 1 140px">Zustand nach diesem Schritt
+          <input type="text" id="next" value="z0" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div>
+      <h2>Reaktion (ein Schritt)</h2>
+      <div class="actions" id="actions"></div>
+      <div class="sub">
+        <button id="undo">↶ Rückgängig</button>
+        <button id="restart">⟲ Neu starten</button>
+        <button id="clear">Protokoll leeren</button>
+      </div>
+      <p class="hint">Tastatur: <kbd>←</kbd> <kbd>→</kbd> bewegen, Zeichen-Taste schreibt es (z. B. <kbd>o</kbd>, <kbd>i</kbd>), <kbd>_</kbd> schreibt ␣, <kbd>Strg</kbd>+<kbd>Z</kbd> rückgängig. Ein Klick aufs Band ändert ein Feld, ohne einen Schritt zu zählen.</p>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <h2>Deine Übergangstabelle</h2>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Zustand</th><th>Zeichen</th><th>Reaktion</th><th>Neuer Zustand</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="warn"></div>
+      <p class="hint">Gesammelt über alle Läufe seit dem letzten „Protokoll leeren“. Teste mehrere Eingaben, dann wächst die Tabelle mit.</p>
+    </section>
+    <section class="panel">
+      <h2>Schritte in diesem Lauf</h2>
+      <ul class="log" id="log"></ul>
+    </section>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const B='_';
+const show=c=>c===B?'␣':c;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let tape=new Map(), head=0, state='z0', hist=[], log=[], table=new Map(); // table: key "z\0c" -> Map(action+"\0"+new -> count)
+
+function store(){try{localStorage.setItem('tw-hand',JSON.stringify({input:$('input').value,mode:$('mode').value,alpha:$('alpha').value,start:$('start').value,table:[...table].map(([k,v])=>[k,[...v]])}))}catch(e){}}
+function restore(){try{const s=JSON.parse(localStorage.getItem('tw-hand')||'null');if(!s)return;
+  for(const k of ['input','mode','alpha','start'])if(s[k]!=null)$(k).value=s[k];
+  table=new Map((s.table||[]).map(([k,v])=>[k,new Map(v)]));}catch(e){}}
+
+function alphabet(){return [...new Set($('alpha').value.split(/[\s,]+/).filter(x=>x.length===1&&x!==B))]}
+
+function load(){
+  tape=new Map();
+  [...$('input').value].forEach((ch,i)=>{if(ch!==' '&&ch!==B)tape.set(i,ch)});
+  head=$('mode').value==='left'?-1:0;
+  state=$('start').value.trim()||'z0';
+  $('next').value=state;
+  hist=[];log=[];
+  buildActions();store();render();
+}
+
+function buildActions(){
+  const a=$('actions');a.innerHTML='';
+  const mk=(label,cls,act,title)=>{const b=document.createElement('button');b.className=cls;b.textContent=label;b.title=title;b.onclick=()=>doStep(act);a.append(b)};
+  mk('← L','mv','L','Kopf nach links');
+  mk('R →','mv','R','Kopf nach rechts');
+  for(const c of alphabet())mk('schreibe '+c,'wr',c,'Zeichen '+c+' schreiben');
+  mk('schreibe ␣','wr',B,'Feld leeren');
+}
+
+function doStep(act){
+  const nxt=$('next').value.trim()||state;
+  const read=tape.get(head)||B;
+  hist.push({t:new Map(tape),head,state,next:$('next').value,logLen:log.length,rec:[state+'\u0000'+read,act+'\u0000'+nxt]});
+  if(act==='L')head--;else if(act==='R')head++;
+  else act===B?tape.delete(head):tape.set(head,act);
+  const k=state+'\u0000'+read,v=act+'\u0000'+nxt;
+  if(!table.has(k))table.set(k,new Map());
+  const m=table.get(k);m.set(v,(m.get(v)||0)+1);
+  log.push(`#${log.length+1}  (${state}, ${show(read)}) → ${act==='L'||act==='R'?act:'schreibe '+show(act)}, ${nxt}`);
+  state=nxt;$('next').value=state;
+  store();render();
+}
+
+function undo(){
+  const h=hist.pop();if(!h)return;
+  tape=h.t;head=h.head;state=h.state;$('next').value=h.next;log.length=h.logLen;
+  const m=table.get(h.rec[0]);
+  if(m){const n=(m.get(h.rec[1])||0)-1;if(n>0)m.set(h.rec[1],n);else m.delete(h.rec[1]);if(!m.size)table.delete(h.rec[0])}
+  store();render();
+}
+
+function describe(){
+  const ks=[...tape.keys()];
+  if(!ks.length)return `Band: <b>leer</b> · Kopf auf Position ${head}`;
+  const lo=Math.min(...ks),hi=Math.max(...ks);let s='';
+  for(let i=lo;i<=hi;i++)s+=show(tape.get(i)||B);
+  let val='';
+  if(/^[OI]+$/.test(s))val=` (binär ${parseInt(s.replace(/O/g,'0').replace(/I/g,'1'),2)}${/^I+$/.test(s)?`, unär ${s.length}`:''})`;
+  if(s.includes('␣'))val=' (mit Lücke)';
+  const rel=head-lo;
+  const pos=rel===-1?'Kopf links neben dem Inhalt':rel===0?'Kopf auf dem ersten Zeichen':rel===hi-lo+1?'Kopf rechts neben dem Inhalt':`Kopf auf Position ${head}`;
+  return `Band: <b>${esc(s)}</b>${val} · ${pos} · Schritte: <b>${log.length}</b>`;
+}
+
+function render(){
+  // Band
+  const ks=[...tape.keys()];
+  const lo=ks.length?Math.min(...ks):head, hi=ks.length?Math.max(...ks):head;
+  const from=Math.min(lo,head,-1)-3,to=Math.max(hi,head,0)+4;
+  const t=$('tape');t.innerHTML='';
+  for(let i=from;i<=to;i++){
+    const c=tape.get(i)||B;
+    const w=document.createElement('div');w.className='cellwrap'+(i===head?' head':'');
+    const d=document.createElement('div');d.className='cell'+(c===B?' blank':'')+(i===head?' head':'');
+    d.textContent=show(c);d.tabIndex=0;d.dataset.i=i;d.title='Klicken: Zeichen ändern (zählt nicht als Schritt)';
+    const n=document.createElement('span');n.className='idx';n.textContent=i;
+    w.append(d,n);t.append(w);
+  }
+  const hc=t.querySelector('.cell.head');if(hc)hc.scrollIntoView({block:'nearest',inline:'center'});
+  $('readout').innerHTML=describe();
+  $('state').textContent=state;$('reads').textContent=show(tape.get(head)||B);
+
+  // bekannte Zustände als Chips
+  const states=new Set([$('start').value.trim()||'z0',state]);
+  for(const [k,m] of table){states.add(k.split('\u0000')[0]);for(const v of m.keys())states.add(v.split('\u0000')[1])}
+  const nv=$('next').value.trim();
+  $('chips').innerHTML=[...states].sort((a,b)=>a.localeCompare(b,'de',{numeric:true})).map(s=>`<button class="chip${s===nv?' on':''}" data-s="${esc(s)}">${esc(s)}</button>`).join('')+`<button class="chip" data-new="1">+ neu</button>`;
+
+  // Tabelle
+  const rows=[];let conflicts=0;
+  const keys=[...table.keys()].sort((a,b)=>a.localeCompare(b,'de',{numeric:true}));
+  for(const k of keys){
+    const [z,c]=k.split('\u0000');const m=table.get(k);const bad=m.size>1;if(bad)conflicts++;
+    for(const v of m.keys()){const [a,n]=v.split('\u0000');
+      rows.push(`<tr class="${bad?'conflict':''}"><td>${esc(z)}</td><td>${esc(show(c))}</td><td>${esc(a==='L'||a==='R'?a:show(a))}</td><td>${esc(n)}</td></tr>`)}
+  }
+  $('tbody').innerHTML=rows.length?rows.join(''):'<tr class="empty"><td colspan="4">Noch keine Schritte. Drück eine Reaktion.</td></tr>';
+  $('warn').innerHTML=conflicts?`<div class="warn">Rot markiert: Du hast im selben Zustand beim selben Zeichen unterschiedlich reagiert. Eine Turing-Maschine braucht dafür genau eine Regel. Wahrscheinlich brauchst du hier einen zusätzlichen Zustand.</div>`:'';
+
+  $('log').innerHTML=log.length?log.slice(-300).reverse().map(l=>`<li>${esc(l)}</li>`).join(''):'<li style="font-family:var(--f-body);color:var(--muted);font-weight:400">Noch kein Schritt.</li>';
+  $('undo').disabled=!hist.length;
+}
+
+$('chips').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b)return;
+  if(b.dataset.new){
+    const used=new Set([...$('chips').querySelectorAll('[data-s]')].map(x=>x.dataset.s));
+    let i=0;while(used.has('z'+i))i++;
+    $('next').value='z'+i;
+  }else $('next').value=b.dataset.s;
+  render();$('next').focus();
+});
+$('next').addEventListener('input',render);
+
+$('tape').addEventListener('click',e=>{
+  const c=e.target.closest('.cell');if(!c)return;
+  const i=+c.dataset.i,a=[B,...alphabet()],cur=tape.get(i)||B;
+  const nx=a[(a.indexOf(cur)+1)%a.length];
+  nx===B?tape.delete(i):tape.set(i,nx);
+  render();
+});
+
+$('load').onclick=load;$('restart').onclick=load;$('undo').onclick=undo;
+$('clear').onclick=()=>{table=new Map();store();render()};
+$('mode').onchange=load;$('start').onchange=load;
+$('alpha').onchange=()=>{buildActions();store()};
+$('input').addEventListener('keydown',e=>{if(e.key==='Enter')load()});
+$('next').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur()});
+
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.target.matches('input')){e.preventDefault();undo();return}
+  if(e.target.matches('input,select,textarea')||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==='ArrowLeft'){e.preventDefault();doStep('L');return}
+  if(e.key==='ArrowRight'){e.preventDefault();doStep('R');return}
+  if(e.key==='_'){e.preventDefault();doStep(B);return}
+  const hit=alphabet().find(c=>c.toLowerCase()===e.key.toLowerCase());
+  if(hit){e.preventDefault();doStep(hit)}
+});
+
+restore();load();
+</script>
+
+</body></html>
